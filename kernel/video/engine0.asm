@@ -94,13 +94,15 @@ cx_ov_load                      ; A = the ENGINE-IMAGE INDEX to pull in
     plp
     rts
 
-; --- cx_gfx_init (slot 2) -- ALWAYS lands in mode 0 -------------------
+; --- cx_gfx_init (slot 2) -- ALWAYS lands on the desktop (OV0) --------
 ; The shell (and the panic path, and every 0.x app) calls this to own
-; the GUI screen. If an app left another engine in the port, put mode
-; 0's back first: whatever happens in a mode, cx_exit -> shell -> here
-; restores the desktop.
+; the GUI screen. If another IMAGE rides the port, boot OV0 back first:
+; whatever happens in a mode, cx_exit -> shell -> here restores the
+; desktop. Test cx_veng, NOT cx_vmode -- the 640x480 umbrella's VERA_2
+; depths (OV4H/OV8H) are cx_vmode 0 too, but their engine index is not 0;
+; without booting OV0 back, cx_ov_load never turns VERA_2 off (black screen).
 cx_do_gfx_init
-    lda cx_vmode
+    lda cx_veng
     beq @go
     jsr cx_ov_boot
 @go

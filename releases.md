@@ -4,6 +4,16 @@ CXRF (Commander X16 Runtime Framework) shipped as **CXGEOS** through v0.9.0 and
 was renamed at v0.10.0. Git tags keep their `vX.Y.Z` names; dates are tag dates.
 Newest release first.
 
+## v0.12.1 — fix a black screen on exit from a VERA_2 depth (2026-07-24)
+
+- **`cx_gfx_init` now restores the desktop from a VERA_2 depth.** Leaving a
+  `CX_MODE_BMPHIGH` bpp-4/8 app (`cx_exit` → shell → `cx_gfx_init`) left a black
+  screen: `cx_do_gfx_init` decided "already on the desktop, skip the reload" by
+  testing `cx_vmode == 0`, but with the 640×480 umbrella the VERA_2 depths run
+  at `cx_vmode 0` too (only their engine index differs). So it never booted OV0
+  back, `cx_ov_load` never ran its `stz VERA2_CTRL`, and VERA_2 stayed up over a
+  dark VERA. Test `cx_veng` (the loaded image) instead — the desktop is engine 0.
+
 ## v0.12.0 — four new graphics depths, `cx_gfx_mode` gains a bpp (2026-07-24)
 
 - **`cx_gfx_mode` now takes a bit-depth.** `A` = the mode, **`X` = bpp**
