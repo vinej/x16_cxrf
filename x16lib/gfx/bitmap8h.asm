@@ -718,43 +718,35 @@ bitmap8h_onscreen
     rts
 
 bitmap8h_addr_calc
-    lda X16_P2                  ; a = y << 7
+    lda X16_P2                  ; y*640 = y*512 + y*128, in ~30 cycles:
+    lsr                         ; lo = (y & 1) << 7
+    tax                         ; md/hi = (y << 1) + (y >> 1)
+    lda #0
+    ror
     sta g8h_a0
-    lda X16_P3
+    lda X16_P2
+    asl
     sta g8h_a1
-    stz g8h_a2
-    ldx #7
-@s7
-    asl g8h_a0
-    rol g8h_a1
-    rol g8h_a2
-    dex
-    bne @s7
-
-    lda g8h_a0                  ; T = y << 9
-    sta X16_T0
-    lda g8h_a1
-    sta X16_T1
-    lda g8h_a2
-    sta X16_T2
-    asl X16_T0
-    rol X16_T1
-    rol X16_T2
-    asl X16_T0
-    rol X16_T1
-    rol X16_T2
-
-    clc                         ; y*640 = (y<<7) + (y<<9)
-    lda g8h_a0
-    adc X16_T0
-    sta g8h_a0
-    lda g8h_a1
-    adc X16_T1
-    sta g8h_a1
-    lda g8h_a2
-    adc X16_T2
+    lda #0
+    rol
     sta g8h_a2
-
+    txa
+    clc
+    adc g8h_a1
+    sta g8h_a1
+    bcc :+
+    inc g8h_a2
+:
+    lda X16_P3                  ; y >= 256: + 256*640 = $28000
+    beq @addx
+    clc
+    lda g8h_a1
+    adc #$80
+    sta g8h_a1
+    lda g8h_a2
+    adc #$02
+    sta g8h_a2
+@addx
     clc                         ; + x
     lda g8h_a0
     adc X16_P0
@@ -762,10 +754,9 @@ bitmap8h_addr_calc
     lda g8h_a1
     adc X16_P1
     sta g8h_a1
-    lda g8h_a2
-    adc #0
-    sta g8h_a2
-    rts
+    bcc :+
+    inc g8h_a2
+:	rts
 
 bitmap8h_fill_count
     ldy g8h_n+1                 ; high byte first, so beq tests the LOW byte:

@@ -125,10 +125,6 @@ cx_do_gfx_mode
     pha                         ; the mode, for cx_vmode
     jsr cx_eng_index            ; A = mode, X = bpp -> A = engine index
     bcs @bad
-    cmp #2                      ; mode 2 (tiles): the depth is per-layer, so
-    bne @nt                     ; there is no single "mode bpp" -- instead X
-    jsr cx_tbpp_set             ; sets the tile DEFAULT depth (cx_tbpp) that
-@nt                             ; cx_tile_setup adopts when its own bpp is 0
     cmp cx_veng
     beq @same                   ; that image already rides the port
     jsr cx_ov_load              ; A = engine index (sets cx_veng)
@@ -148,19 +144,48 @@ cx_do_gfx_mode
     rts
 
 ; cx_eng_index -- A = mode, X = bpp -> A = engine-image index, carry set
-; if the mode is unknown. Mode 0 (640x480) is an UMBRELLA: 2 bpp (or native)
-; is OV0, the std-VERA desktop; 4 bpp is OV4H and 8 bpp is OV8H, both on the
-; VERA_2 second plane. Mode 1 (320x240) has three (8 bpp = 1, 4 bpp = 5,
-; 2 bpp = 6); modes 2/3 have one image each (index == mode).
+; if the mode is unknown. Pure decision logic that only runs on a mode
+; switch, so it rides the gfx-extra bank behind a far-call stub; A, X
+; and the carry all survive cxb_call. The mode-2 tile default depth
+; (cx_tbpp) is set bank-side too, from the same X.
 cx_eng_index
+    jsr cxb_call
+    .byte CX_GFXX_BANK
+    .addr cxk_eng_index
+
+.segment "B17CODE"
+
+; Mode 0 (640x480) is an UMBRELLA: 2 bpp (or native) is OV0, the
+; std-VERA desktop; 4 bpp is OV4H and 8 bpp is OV8H, both on the VERA_2
+; second plane. Mode 1 (320x240) has three (8 bpp = 1, 4 bpp = 5,
+; 2 bpp = 6); modes 2/3 have one image each (index == mode). Mode 2
+; (tiles): the depth is per-layer, so there is no single "mode bpp" --
+; instead X = 2/4/8 sets the tile DEFAULT depth (cx_tbpp) that
+; cx_tile_setup adopts when its own bpp is 0; any other X leaves it
+; alone (so cx_gfx_mode(2, 0) keeps the current default).
+cxk_eng_index
     cmp #1
     beq @m1
     cmp #0
     beq @m0
+    cmp #2
+    beq @m2
     cmp #CX_NMODES
     bcs @bad
     clc
-    rts                         ; modes 2/3: image index == mode
+    rts                         ; mode 3: image index == mode
+@m2
+    cpx #2
+    beq @tset
+    cpx #4
+    beq @tset
+    cpx #8
+    bne @tdone
+@tset
+    stx cx_tbpp
+@tdone
+    clc                         ; image index == mode (2), still in A
+    rts
 @m0                             ; mode 0: the 640x480 umbrella
     cpx #4
     beq @m0_4
@@ -197,19 +222,7 @@ cx_eng_index
     sec
     rts
 
-; cx_tbpp_set -- X = a tile depth (2/4/8) -> cx_tbpp; A preserved, any
-; other X left alone (so cx_gfx_mode(2, 0) keeps the current default)
-cx_tbpp_set
-    cpx #2
-    beq @s
-    cpx #4
-    beq @s
-    cpx #8
-    bne @done
-@s
-    stx cx_tbpp
-@done
-    rts
+.segment "CODE"
 
 ; The KERNAL's boot LOAD wraps exactly four banks (32KB) before it
 ; stops, so every engine image rides banks 2-5; modes 2 and 3 share

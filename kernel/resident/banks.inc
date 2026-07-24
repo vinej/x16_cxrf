@@ -11,7 +11,7 @@
 ; compares it across CXKERNEL.PRG ($815C), CXBANKS.BIN (2:$A040) and
 ; CXBANKS2.BIN (16..19:$A000), so a hand-copied card carrying
 ; yesterday's file refuses loudly instead of crashing strangely.
-CX_KBUILD = $0602
+CX_KBUILD = $0603
 
 ; RAM banks 16-19: the second banked-code file, CXBANKS2.BIN, one
 ; theme per bank. Empty banks hold their signature and an anchor until
