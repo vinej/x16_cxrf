@@ -63,6 +63,10 @@ Full documentation lives in [docs/](docs/).
   - [**CXRF Data**](apps/data/) — a flat-file record manager: typed fields, sort, filter, find, totals, `.CXR` files, and export to Sheet
   - [**CXRF Paint**](apps/paint/) — 320×240 in 256 colours: nine tools, live shape preview, palette picker, undo, BMX images
   - [**CXRF Chart**](apps/chart/) — bars, line and pie from a Sheet (or exported Data) table, saved as a BMX picture
+  - [**CXRF Calc**](apps/calc/) — a **popup** calculator (it draws over the live desktop) in three modes: standard, scientific (trig, logs, powers, DEG/RAD) and programmer (32-bit DEC/HEX/BIN, bitwise, shifts)
+
+  The suite sits in the SD root; demos, showcases and the per-toolchain
+  smokes live one folder down in `DEMO/`.
 - **Stock ROM (R49+)** — boots from SD via `AUTOBOOT.X16` or from a **cartridge** (`build.ps1 -Cart`, ROM banks 32–36). No ROM patches.
 - **Native CMDR-DOS FAT32 files** .
 - **Apps in any toolchain** — fixed jump-table ABI with generated bindings for 7 assemblers, 5 C compilers, and Prog8.

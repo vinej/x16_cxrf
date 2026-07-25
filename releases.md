@@ -4,6 +4,39 @@ CXRF (Commander X16 Runtime Framework) shipped as **CXGEOS** through v0.9.0 and
 was renamed at v0.10.0. Git tags keep their `vX.Y.Z` names; dates are tag dates.
 Newest release first.
 
+## v0.15.0 — a popup calculator, and a tidy disk (2026-07-25)
+
+- **CXRF Calc** (`apps/calc/calc.p8`) — the Prog8 calculator becomes the
+  suite's calculator, and it opens as a **popup**: no `gfx_clear`
+  anywhere, so it draws a framed window with a title bar over the live
+  desktop and hands the screen back on exit. Three modes, from the
+  title-bar buttons or `TAB`:
+  - **STD** — four functions on the ROM float, `%`, `+/-`, `sqrt`,
+    `1/x`, `x2`, `x^y`, and a memory (`M+ MR MC MS`)
+  - **SCI** — `sin cos tan`, `ln`, `log`, `10^x`, `e^x`, `x^y`, `pi`,
+    `e`, and a DEG/RAD toggle on the status line
+  - **PRG** — 32-bit integers in **DEC / HEX / BIN** with hex digit
+    keys, `NOT AND OR XOR` and shifts
+  The keypad is 7×5 — digits in columns 0–2, arithmetic in column 3, the
+  mode's functions in 4–6, so switching modes repaints only the right
+  third. **Click feedback:** a press paints the key with the toolkit's
+  highlight fill and the mouse-up releases it. The self-test proves both
+  engines (`2+3=5` and `12 AND 10 = 8`) before any drawing.
+- **The SD root is the suite now.** The root carries the boot set plus
+  **CALC8, CHART, CPANEL, DATA, PAINT, SHEET, WORD**; every demo,
+  showcase, per-toolchain smoke and the C calculator moved into
+  **`DEMO/`**, which the desktop shows as a folder (15 files in the root,
+  37 in `DEMO`). *An existing card's demos have moved — reformat it from
+  `build.ps1 -Image`, or make the folder by hand.*
+- **`tools/mksd.py` writes directories.** It grew one level of
+  subdirectory (`--dir NAME files...`): a real directory cluster with
+  `.` and `..` entries. Without it the FAT32 image would have flattened
+  the new folder away — and the SD-image boot smoke is what proves it,
+  since that test boots the desktop from the image rather than the host
+  folder.
+- `apps/chart/SALES.SHT` — Chart's sample table is a repo file now,
+  staged beside the demos.
+
 ## v0.14.0 — the office suite (2026-07-25)
 
 Five real applications on the desktop, and they interchange files:
