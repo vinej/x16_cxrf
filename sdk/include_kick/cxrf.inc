@@ -217,7 +217,7 @@
 
 // --- the graphics port
 .label cx_gfx_mode = $80F4
-//     A = the mode, X = bpp (0/2/4/8; 0 = the mode's native depth) -> carry set if unknown; swaps the engine and runs its init (VERA is reprogrammed, the screen is the new mode's). Mode 1 (320x240) is 8/4/2 bpp; mode 4 (640x480, VERA_2) is 8/4 bpp; for mode 2 (tiles) X sets the default tile depth cx_tile_setup adopts when its own bpp is 0; X is ignored for modes 0/3
+//     A = the mode, X = the depth/variant (0 = the mode's native form) -> carry set if unknown; swaps the engine and runs its init (VERA is reprogrammed, the screen is the new mode's). Mode 0 (640x480) is bpp 2 (std-VERA desktop) / 4 / 8 (VERA_2); mode 1 (320x240) is bpp 8/4/2; for mode 2 (tiles) X sets the default tile depth cx_tile_setup adopts when its own bpp is 0; for mode 3 (text) X is a KERNAL screen_mode geometry code ($00-$0B: 80x60, 80x30, 40x60, 40x30, 40x15, 20x30, 20x15, 22x23, 64x50, 64x25, 32x50, 32x25; an unknown code lands 80x60) and cx_gfx_info reports the live grid
 .label cx_gfx_info = $80F7
 //     -> A = mode, P0/P1 = width, P2/P3 = height, P4 = bpp, P5/P6 = bytes per row
 

@@ -89,6 +89,10 @@ WG_SZP    = 14                  ; WG_LIST: optional word ptr (the record's two
                                 ; Zero (every list before cxm_wg_list2) = no
                                 ; size column, so old lists draw unchanged.
 WL_ROWH   = 10                  ; a list row's height
+WSB_W     = 9                   ; the list's scroll-arrow strip: drawn on the
+                                ; right edge when the items overflow the box
+                                ; (pixel canvas only); a click in its upper /
+                                ; lower half pages the selection up / down
 
 WG_DISABLED = $01               ; flags bit 0
 WG_SELECTED = $40               ; flags bit 6: the widget a fresh list installs
@@ -213,33 +217,20 @@ wg_restore
     rts
 
 ; ---------------------------------------------------------------------
-; wg_pop_own -- if the region on top of the stack is the toolkit's own
-; (handler = wg_vec), discard it. Lets wg_set be idempotent: calling
-; cx_wg_set again to swap the widget list replaces the click region in
-; place instead of leaking a stack slot per swap. The stack (rg_n, rg_tab)
-; and rg_pop are resident, reachable from bank 16.
+; wg_pop_own -- discard the toolkit's own click region (handler =
+; wg_vec) wherever it sits in the stack. Lets wg_set be idempotent:
+; calling cx_wg_set again to swap the widget list replaces the click
+; region instead of leaking a stack slot per swap -- even when a
+; re-set menu bar was pushed over it in between (rg_remove hunts by
+; handler; the old pop-only-if-top missed that interleaving and the
+; stack filled after a few view switches). rg_remove is resident,
+; reachable from bank 16.
 wg_pop_own
     pha                         ; A/X are the caller's list pointer, bound for
     phx                         ; wg_setup next -- this routine must not eat them
-    lda rg_n
-    beq @out                    ; empty stack: nothing on top
-    sec
-    sbc #1
-    sta wg_t                    ; top slot index
-    asl
-    asl                         ; slot*4
-    clc
-    adc wg_t                    ; slot*5
-    asl                         ; slot*10 = its byte offset
-    tay
-    lda rg_tab+8,y              ; the region's handler
-    cmp #<wg_vec
-    bne @out
-    lda rg_tab+9,y
-    cmp #>wg_vec
-    bne @out
-    jsr rg_pop
-@out
+    lda #<wg_vec
+    ldx #>wg_vec
+    jsr rg_remove
     plx
     pla
     rts
@@ -962,6 +953,8 @@ wg_p_list
 
     jsr wg_list_maxrows         ; wg_maxrows = (h-2)/ROWH
 
+    jsr wg_sb_calc              ; wg_sb = WSB_W while the strip is up
+
     ldy #WG_VAL                 ; keep the selection visible: if it sits
     lda (CX_M_PTR),y            ; above the top, the top becomes it
     ldy #WG_TOP
@@ -1096,7 +1089,9 @@ wg_p_list
     sta X16_T2+1
     lda X16_T2
     ora X16_T2+1
-    beq @nosize                 ; no size array on this list
+    bne @size                   ; no size array on this list (the strip
+    jmp @nosize                 ; margin pushed @nosize past a branch)
+@size
     lda wg_idx                  ; szstr = array[item]
     asl
     tay
@@ -1126,9 +1121,16 @@ wg_p_list
     sta CX_M_PTR
     lda wg_szsave+1
     sta CX_M_PTR+1
-    sec                         ; pen x = (x + w) - 4 - width
+    sec                         ; pen x = (x + w) - 4 - strip - width
     lda wg_t
     sbc #4
+    sta wg_t
+    lda wg_t+1
+    sbc #0
+    sta wg_t+1
+    sec                         ; the size column clears the scroll strip
+    lda wg_t                    ; (wg_sb = 0 when there is none)
+    sbc wg_sb
     sta wg_t
     lda wg_t+1
     sbc #0
@@ -1157,6 +1159,158 @@ wg_p_list
     inc wg_row
     jmp @rows                   ; the body is over a page
 @done
+    jmp wg_p_strip              ; the scroll strip, when the items overflow
+
+; wg_sb_calc -- wg_sb = WSB_W when the list's scroll strip is up: the
+; items overflow the box, on a pixel canvas (a cell list is one cell a
+; row and mode 3 draws no strip). CX_M_PTR = the record, wg_maxrows set.
+wg_sb_calc
+    stz wg_sb
+    jsr wg_is_text
+    beq @no
+    ldy #WG_GRP
+    lda (CX_M_PTR),y
+    cmp wg_maxrows
+    bcc @no
+    beq @no
+    lda #WSB_W
+    sta wg_sb
+@no
+    rts
+
+; wg_strip_edge -- wg_t = x + w - WSB_W, the strip's left edge (16-bit)
+wg_strip_edge
+    ldy #WG_X
+    lda (CX_M_PTR),y
+    ldy #WG_W
+    clc
+    adc (CX_M_PTR),y
+    sta wg_t
+    ldy #WG_X+1
+    lda (CX_M_PTR),y
+    ldy #WG_W+1
+    adc (CX_M_PTR),y
+    sta wg_t+1
+    sec
+    lda wg_t
+    sbc #WSB_W
+    sta wg_t
+    lda wg_t+1
+    sbc #0
+    sta wg_t+1
+    rts
+
+; wg_p_strip -- draw the list's scroll strip: a separator line down the
+; right edge and an up / down page arrow. A no-op unless wg_sb says the
+; strip is up. CX_M_PTR survives the port calls (the row loop proved it).
+wg_p_strip
+    lda wg_sb
+    bne @draw
+    rts
+@draw
+    jsr wg_strip_edge           ; wg_t = xs
+    lda wg_t                    ; the strip centre, for the triangles
+    clc
+    adc #4
+    sta wsb_x
+    lda wg_t+1
+    adc #0
+    sta wsb_x+1
+    ldy #WG_Y
+    lda (CX_M_PTR),y
+    sta wsb_y
+    ldy #WG_Y+1
+    lda (CX_M_PTR),y
+    sta wsb_y+1
+    lda wg_t                    ; the separator: (xs, y0+1), h-2 tall
+    sta X16_P0
+    lda wg_t+1
+    sta X16_P1
+    lda wsb_y
+    clc
+    adc #1
+    sta X16_P2
+    lda wsb_y+1
+    adc #0
+    sta X16_P3
+    ldy #WG_H
+    lda (CX_M_PTR),y
+    sec
+    sbc #2
+    sta X16_P4
+    stz X16_P5
+    lda th_frame
+    jsr cxov_vline
+    stz wsb_i                   ; up arrow: rows i = 0..3, width 2i+1,
+@uprow                          ; apex at y0+3
+    sec
+    lda wsb_x
+    sbc wsb_i
+    sta X16_P0
+    lda wsb_x+1
+    sbc #0
+    sta X16_P1
+    lda wsb_y
+    clc
+    adc #3
+    sta X16_P2
+    lda wsb_y+1
+    adc #0
+    sta X16_P3
+    lda X16_P2
+    clc
+    adc wsb_i
+    sta X16_P2
+    bcc @upyok
+    inc X16_P3
+@upyok
+    lda wsb_i
+    asl
+    inc a
+    sta X16_P4
+    stz X16_P5
+    lda th_frame
+    jsr cxov_hline
+    inc wsb_i
+    lda wsb_i
+    cmp #4
+    bcc @uprow
+    stz wsb_i                   ; down arrow: rows i = 0..3, width 7-2i,
+@dnrow                          ; widest at y0+h-7 so it points down
+    lda #3
+    sec
+    sbc wsb_i
+    sta wg_t2                   ; k = 3 - i
+    sec
+    lda wsb_x
+    sbc wg_t2
+    sta X16_P0
+    lda wsb_x+1
+    sbc #0
+    sta X16_P1
+    ldy #WG_H                   ; y = y0 + (h - 7 + i)
+    lda (CX_M_PTR),y
+    sec
+    sbc #7
+    clc
+    adc wsb_i
+    clc
+    adc wsb_y
+    sta X16_P2
+    lda wsb_y+1
+    adc #0
+    sta X16_P3
+    lda wg_t2
+    asl
+    inc a
+    sta X16_P4
+    stz X16_P5
+    lda th_frame
+    jsr cxov_hline
+    inc wsb_i
+    lda wsb_i
+    cmp #4
+    bcc @dnrow
     rts
 
 ; wg_row_y -- X16_P2/P3 = box_y + 1 + wg_row * WL_ROWH (16-bit).
@@ -2275,7 +2429,7 @@ wg_act
     sta (CX_M_PTR),y
     jsr wg_paint
     lda #1                      ; report "clicked"
-    bra @post
+    jmp @post
 @toggle
     ldy #WG_VAL                 ; flip 0<->1
     lda (CX_M_PTR),y
@@ -2294,6 +2448,10 @@ wg_act
     bra @post
 
 @list
+    jsr wg_list_strip           ; a click in the scroll strip pages the
+    bcc @rowclick               ; selection and is consumed (carry set)
+    rts
+@rowclick
     ; the row under the pointer, then + top. The graphical list frames
     ; the box and stacks WL_ROWH-tall rows inside; mode 3's ASCII list
     ; has no frame and one CELL per row, so there the difference IS the
@@ -2357,6 +2515,71 @@ wg_act
     lda #1
 @post
     jmp wg_post_val
+
+; wg_list_strip -- the list's scroll-strip click. Carry set = the click
+; was in the strip (the right WSB_W px, live only while the items
+; overflow a pixel-canvas box) and paged the selection: the upper half
+; a page up, the lower half a page down. The painter's keep-the-
+; selection-visible logic does the actual scrolling; a page turn only
+; selects, it never acts. Carry clear = not a strip click, a plain row.
+wg_list_strip
+    jsr wg_is_text
+    beq @miss                   ; a cell list has no strip
+    jsr wg_list_maxrows
+    jsr wg_sb_calc
+    lda wg_sb
+    beq @miss                   ; everything visible: no strip up
+    jsr wg_strip_edge           ; wg_t = x + w - WSB_W
+    lda X16_P2                  ; click x left of the strip: a row click
+    cmp wg_t
+    lda X16_P3
+    sbc wg_t+1
+    bcc @miss
+    ldy #WG_H                   ; in the strip: up or down by the midline
+    lda (CX_M_PTR),y
+    lsr
+    ldy #WG_Y
+    clc
+    adc (CX_M_PTR),y
+    sta wg_t
+    ldy #WG_Y+1
+    lda (CX_M_PTR),y
+    adc #0
+    sta wg_t+1
+    lda X16_P4
+    cmp wg_t
+    lda X16_P5
+    sbc wg_t+1
+    bcs @pagedn
+    ldy #WG_VAL                 ; page up: sel = max(sel - maxrows, 0)
+    lda (CX_M_PTR),y
+    sec
+    sbc wg_maxrows
+    bcs @pageset
+    lda #0
+    bra @pageset
+@pagedn
+    ldy #WG_VAL                 ; page down: sel = min(sel + maxrows,
+    lda (CX_M_PTR),y            ; count - 1)
+    clc
+    adc wg_maxrows
+    bcs @pagemax
+    ldy #WG_GRP
+    cmp (CX_M_PTR),y
+    bcc @pageset
+@pagemax
+    ldy #WG_GRP
+    lda (CX_M_PTR),y
+    dec a
+@pageset
+    ldy #WG_VAL
+    sta (CX_M_PTR),y
+    jsr wg_paint
+    sec
+    rts
+@miss
+    clc
+    rts
 
 ; wg_post_val -- A = value; posts EV_WIDGET(detail = wg_i, P2 = value).
 ; Shared by the click path and the keyboard.
@@ -3000,6 +3223,11 @@ wg_row   .byte 0                  ; a list's visible row being drawn
 wg_idx   .byte 0                  ; ...the item it shows
 wg_maxrows .byte 0                ; ...how many rows fit
 wg_szsave .word 0                 ; CX_M_PTR parked across the size-column measure
+wg_sb    .byte 0                  ; WSB_W while the list overflows (pixel canvas):
+                                  ; the arrow strip is up, sizes shift left of it
+wsb_x    .word 0                  ; the strip centre x, for the arrow triangles
+wsb_y    .word 0                  ; the box top y
+wsb_i    .byte 0                  ; the triangle row being drawn
 wg_evt   .byte 0                  ; the press wg_hit saw: DOWN or DBLCLICK
 
 .segment "CODE"

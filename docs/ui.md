@@ -68,6 +68,13 @@ table is not consulted. A miss on every region falls through to the
 app's table as before. Key and timer events never route through
 regions: focus is not geometry.
 
+Re-setting is leak-free: `cx_menu_set` and `cx_wg_set` remove their own
+previous region through `rg_remove` (hunt by handler, anywhere in the
+stack, close the gap) before pushing the fresh one — an app that
+repaints its bar + widgets on every view switch used to interleave the
+two regions past the old pop-only-if-top check and fill the 8-deep
+stack in a few switches. `cx_menu_off` removes by handler the same way.
+
 This is the plan's "stacked, not general-overlapping" window model in
 its smallest form. A menu drop-down is a push; closing it is a pop; the
 dialog engine is the same push with a different painter.
@@ -147,7 +154,13 @@ switch plus `cx_wg_draw` recolours the lot.
 
 `cx_wg_set` pushes one region over the bounding box of all the widgets,
 so the routing is the same region machinery the menus use — the toolkit
-hit-tests the individual widgets inside that box. The text field, the list
+hit-tests the individual widgets inside that box. When a list's items
+overflow its box (pixel canvas), a **scroll strip** appears on its right
+edge — a separator line with an up/down arrow — and a click in the
+strip's upper/lower half pages the selection a screenful; the painter's
+keep-the-selection-visible logic does the scrolling, and the size column
+shifts left of the strip. Lists that fit draw exactly as before. The
+text field, the list
 and the desktop's icon grid add a **focus model** on top: TAB moves a focus
 frame between widgets, and a `WG_SELECTED` flag bit (`WG_FLAGS` bit 6) makes a
 list install already-focused. In the icon view a **single click selects** (the

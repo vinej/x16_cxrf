@@ -55,7 +55,7 @@ Full documentation lives in [docs/](docs/).
   - `CX_MODE_BMPHIGH` — the **640×480** umbrella: **bpp 2** is the 4-colour desktop on standard VERA; **bpp 4 / 8** (16 / 256 colours) light up the **VERA_2 second plane**, each with its own palette (emulator: needs `-bitmap2`)
   - `CX_MODE_BMPLOW` — 320×240 bitmap at **8 / 4 / 2 bpp** (256 / 16 / 4 colours), full primitive set, programmable palette
   - `CX_MODE_TILE` — two 64×32 VERA tile layers, hardware scrolling (`cx_tile_*`); bpp 8 or 4 per layer
-  - `CX_MODE_TEXT` — 80×60 text cells "like BASIC": colour fills, PETSCII box frames, ruled lines, mixed-case `cx_say`
+  - `CX_MODE_TEXT` — KERNAL text cells "like BASIC": colour fills, PETSCII box frames, ruled lines, mixed-case `cx_say`. **Any KERNAL geometry** via `cx_gfx_mode(3, code)` — 80×60 (default), 80×30, 40×30, 64×25… — with `cx_gfx_info`, the bounds and the mouse following the live grid (the toolkit's menus/dialogs want ≥ 64×25)
 - Sprites, audio, events, joysticks, files, widgets and dialogs work in every mode.
 - **Stock ROM (R49+)** — boots from SD via `AUTOBOOT.X16` or from a **cartridge** (`build.ps1 -Cart`, ROM banks 32–36). No ROM patches.
 - **Native CMDR-DOS FAT32 files** .

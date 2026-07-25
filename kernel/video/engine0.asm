@@ -162,7 +162,13 @@ cx_eng_index
 ; (tiles): the depth is per-layer, so there is no single "mode bpp" --
 ; instead X = 2/4/8 sets the tile DEFAULT depth (cx_tbpp) that
 ; cx_tile_setup adopts when its own bpp is 0; any other X leaves it
-; alone (so cx_gfx_mode(2, 0) keeps the current default).
+; alone (so cx_gfx_mode(2, 0) keeps the current default). Mode 3
+; (text): X = a KERNAL screen_mode geometry code ($00-$0B: 80x60,
+; 80x30, 40x60, 40x30, 40x15, 20x30, 20x15, 22x23, 64x50, 64x25,
+; 32x50, 32x25) -- code 0 IS the 80x60 default, so X = 0 keeps the
+; old contract. A geometry CHANGE while mode 3 already rides the port
+; must not short-circuit on cx_do_gfx_mode's cx_veng test, so it
+; poisons cx_veng: the image reloads and ov3_init applies the new grid.
 cxk_eng_index
     cmp #1
     beq @m1
@@ -172,8 +178,14 @@ cxk_eng_index
     beq @m2
     cmp #CX_NMODES
     bcs @bad
+    cpx cx_tgeo                 ; mode 3: image index == mode
+    beq @m3done                 ; same geometry: stays a true no-op
+    stx cx_tgeo
+    ldx #$FF                    ; new geometry: force the reload+reinit
+    stx cx_veng                 ; path (cx_ov_load rewrites cx_veng)
+@m3done
     clc
-    rts                         ; mode 3: image index == mode
+    rts
 @m2
     cpx #2
     beq @tset
@@ -437,6 +449,11 @@ cx_tbpp  .byte 4                ; the tile mode's default depth (2/4/8), set
                                 ; it when its own bpp arg is 0. 4 = the old
                                 ; hardcoded default, so nothing changes unless
                                 ; an app asks for another depth up front
+cx_tgeo  .byte 0                ; mode 3's text geometry: a KERNAL screen_mode
+                                ; code ($00-$0B), set by cx_gfx_mode(3, X);
+                                ; 0 = the 80x60 default. ov3_init applies it
+                                ; (an unknown code falls back to 80x60) and
+                                ; publishes the LIVE grid in cx_minfo row 3
 cx_txtport .byte 0              ; 1 while cx_tile_text has OV3T (the tile-text
                                 ; port) up over mode 2, so menu_gate lets the
                                 ; toolkit draw; 0 = plain tiles, toolkit refused

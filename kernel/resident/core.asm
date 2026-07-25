@@ -129,13 +129,19 @@ mouse_cfg
     ldx #80
     ldy #60
     lda cx_vmode
-    cmp #1                       ; mode 1 (8bpp) ...
-    beq @half
-    cmp #2                      ; ...and mode 2 (tiles): both 320x240 2:1
+    cmp #3                      ; mode 3: the LIVE text grid (cells) --
+    beq @text                   ; ov3_init publishes it in the minfo row,
+    cmp #1                      ; so a 40x30 geometry gets a 320x240 field
+    beq @half                   ; and the >>3 cell mapping stays right
+    cmp #2                      ; modes 1 and 2 (tiles): both 320x240 2:1
     bne @cfg
 @half
     ldx #40
     ldy #30
+    bra @cfg
+@text
+    ldx cx_minfo+24
+    ldy cx_minfo+26
 @cfg
     pla
     jmp MOUSE_CONFIG

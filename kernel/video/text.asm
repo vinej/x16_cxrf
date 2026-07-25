@@ -1,12 +1,17 @@
 ; ca65
 ; =====================================================================
-; CXRF :: kernel/video/text.asm -- mode 3: 80x60 text (like BASIC)
+; CXRF :: kernel/video/text.asm -- mode 3: KERNAL text (like BASIC)
 ; =====================================================================
 ; The fourth personality behind the graphics port, and the cheapest:
-; the KERNAL's own 80x60 text screen. It is a CHARACTER GRID, not a
-; framebuffer, so the port's pixel calls are reinterpreted as CELL
-; operations (coordinates 0-79 x 0-59, "colour" = a 16-colour text
-; attribute):
+; the KERNAL's own text screen. 80x60 by default; cx_gfx_mode(3, X)
+; picks any KERNAL screen_mode geometry ($00-$0B -- 80x30, 40x30,
+; 20x15...), and ov3_init publishes the live grid in cx_minfo so
+; cx_gfx_info, the bounds and the mouse field follow. It is a
+; CHARACTER GRID, not a framebuffer, so the port's pixel calls are
+; reinterpreted as CELL operations (cell coordinates, "colour" = a
+; 16-colour text attribute). NOTE: the toolkit's metrics (menus,
+; dialogs, panels) assume >= 64 columns / >= 25 rows -- on the
+; narrower geometries apps draw their own UI with the calls below:
 ;
 ;   cx_clear   fill the screen with a colour (remembered as the paper)
 ;   cx_rect    fill a cell region with a colour (also sets the paper)
@@ -96,6 +101,19 @@ ov3_init
     jsr t_chrout                ; leaves ISO (the X16 default) for PETSCII
                                 ; upper/lower -- flag AND charset, the
                                 ; exact switch BASIC uses
+    lda cx_tgeo                 ; a geometry asked for (cx_gfx_mode(3, X))?
+    beq @sized                  ; 0 = the CINT default, 80x60
+    clc                         ; carry clear = SET the mode; an unknown
+    jsr t_smode                 ; code returns carry set having changed
+@sized                          ; nothing, so the CINT 80x60 stands -- the
+                                ; same "native depth" rule as the bitmaps
+    jsr SCREEN                  ; the LIVE grid (X = cols, Y = rows) into
+    stx cx_minfo+24             ; the mode-3 minfo row, so cx_gfx_info,
+    stz cx_minfo+25             ; the bounds and the mouse field all tell
+    sty cx_minfo+26             ; the truth (cells fit a byte: max 80x60)
+    stz cx_minfo+27
+    jsr cx_ov_bounds            ; the bounds were copied BEFORE this init
+                                ; ran (cx_do_gfx_mode's order) -- refresh
     lda #6                      ; CINT leaves white-on-blue: that is the
     sta t_bg                    ; paper until a clear/rect says otherwise
     plp
@@ -498,6 +516,10 @@ ov3_sr
     sta X16_T5
     lda #VERA_CTRL_ADDRSEL      ; steer ADDR writes at port 1
     tsb VERA_CTRL
+    lda cx_minfo+24             ; the LIVE grid: cols x 2 bytes a row
+    asl                         ; (<= 160; the map stride stays 256 in
+    sta t_len                   ; every geometry, so only the byte count
+                                ; per line follows the column width)
     lda X16_P0                  ; the running middle byte = $B0 + row
     clc
     adc #T3_MAPM
@@ -509,7 +531,7 @@ ov3_sr
     sta VERA_ADDR_M
     lda #($01 | (VERA_INC_1 << 4))
     sta VERA_ADDR_H
-    ldy #160                    ; 80 cells x 2 bytes
+    ldy t_len
     lda t_dir
     bne @rest
 @save
@@ -553,10 +575,17 @@ t_sh  .byte 0
 t_dir   .byte 0
 t_vm    .byte 0
 t_obank .byte 0
+t_len   .byte 0
 
 t_reset
     vera_addrsel 0
     jmp CINT
+
+t_smode
+    pha                         ; vera_addrsel eats A (lda #1 / trb) --
+    vera_addrsel 0              ; the mode code must survive it, and the
+    pla                         ; caller's clc does (trb touches Z only)
+    jmp SCREEN_MODE
 
 t_cls
     vera_addrsel 0

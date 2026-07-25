@@ -173,6 +173,10 @@ mn_set
 
     jsr mn_draw_bar
 
+    lda #<mn_bar_vec            ; a re-set REPLACES the bar region, it
+    ldx #>mn_bar_vec            ; does not stack a second -- an app that
+    jsr rg_remove               ; repaints per view switch leaked a slot
+
     stz X16_P0                  ; the bar region: 0,0 to w-1, barh-1
     stz X16_P1
     stz X16_P2
@@ -199,7 +203,9 @@ mn_set
 ; ---------------------------------------------------------------------
 mn_off
     stz mn_bar_p+1              ; a null bar pointer = no menu
-    jmp rg_pop
+    lda #<mn_bar_vec            ; remove OUR region wherever it sits --
+    ldx #>mn_bar_vec            ; pop-the-top was only correct when the
+    jmp rg_remove               ; bar happened to be on top
 
 ; ---------------------------------------------------------------------
 ; Geometry helpers -- the menu lays out in the current mode's units

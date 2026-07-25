@@ -135,9 +135,10 @@ main
 @selpgok
     stx iconpage
 
-    lda CX_SHELL_STATE          ; the view the last desktop left (0 at cold
-    and #1                      ; boot); an app launch does not clear it
-    sta viewmode
+    lda CX_SHELL_STATE          ; the view the last desktop left; the cell
+    and #1                      ; stores viewmode INVERTED, so the cold-boot
+    eor #1                      ; zero lands on the DEFAULT view, icons. An
+    sta viewmode                ; app launch does not clear it
     beq @vlist
     jsr build_icons             ; icons: lay the grid, then install it
     lda #<iwbuf
@@ -954,7 +955,8 @@ on_menu
 @view
     lda X16_P1                  ; 0 = list, 1 = icons
     sta viewmode
-    sta CX_SHELL_STATE          ; remember it across the next app launch
+    eor #1                      ; stored INVERTED (0 = the icons default),
+    sta CX_SHELL_STATE          ; remembered across the next app launch
     stz iconpage                ; a view change starts at the first page
     jmp set_view
 @theme

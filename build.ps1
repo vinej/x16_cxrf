@@ -216,6 +216,8 @@ function Build-Apps {
         @{ src = "apps\hittest\hittest.asm";     prg = "HITTEST";  name = "Hit regions" },
         @{ src = "apps\cpanel\cpanel.asm";       prg = "CPANEL";   name = "Control panel" },
         @{ src = "apps\tui\tui.asm";             prg = "TUI";      name = "Toolkit (text)" },
+        @{ src = "apps\tuigeo\tuigeo.asm";       prg = "TUIGEO";   name = "Text sizes" },
+        @{ src = "test\geosmoke\geosmoke.asm";   prg = "GEOSMOKE"; name = "Geo smoke" },
         @{ src = "apps\m1ui\m1ui.asm";           prg = "M1UI";     name = "Toolkit (8bpp)" },
         @{ src = "apps\gameloop\gameloop.asm";    prg = "GAMELOOP"; name = "Game + dialog" }
     )) {
@@ -492,6 +494,7 @@ function Stage-SdRoot {
     Copy-Item (Join-Path $build "HITTEST.CXA")   $sdroot
     Copy-Item (Join-Path $build "CPANEL.CXA")    $sdroot
     Copy-Item (Join-Path $build "TUI.CXA")       $sdroot
+    Copy-Item (Join-Path $build "TUIGEO.CXA")    $sdroot
     Copy-Item (Join-Path $build "M1UI.CXA")      $sdroot
     Copy-Item (Join-Path $build "GAMELOOP.CXA")  $sdroot
     if (Test-Path (Join-Path $build "HELLO2.CXA")) {
@@ -691,7 +694,8 @@ if ($Test) {
         @{ cxa = "GFX8HI.CXA";    mk = "GFX8HI OK" },
         @{ cxa = "GFX4.CXA";      mk = "GFX4 OK" },
         @{ cxa = "GFX2.CXA";      mk = "GFX2 OK" },
-        @{ cxa = "GFX4HI.CXA";    mk = "GFX4HI OK" }
+        @{ cxa = "GFX4HI.CXA";    mk = "GFX4HI OK" },
+        @{ cxa = "GEOSMOKE.CXA";  mk = "GEOSMOKE OK" }
     )) {
         if (Test-Path (Join-Path $build $sm.cxa)) {
             $hellos += @{ cxa = $sm.cxa; up = $sm.mk; wait = $sm.mk }

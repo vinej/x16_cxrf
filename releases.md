@@ -4,6 +4,46 @@ CXRF (Commander X16 Runtime Framework) shipped as **CXGEOS** through v0.9.0 and
 was renamed at v0.10.0. Git tags keep their `vX.Y.Z` names; dates are tag dates.
 Newest release first.
 
+## v0.13.0 — text geometries, list scrolling, leak-free re-set (2026-07-24)
+
+- **`CX_MODE_TEXT` takes any KERNAL geometry.** `cx_gfx_mode(3, X)` with `X` =
+  a `screen_mode` code (`$00`–`$0B`: 80×60 default, 80×30, 40×60, 40×30, 40×15,
+  20×30, 20×15, 22×23, 64×50, 64×25, 32×50, 32×25). `X` = 0 keeps the old
+  contract (code 0 *is* 80×60); an unknown code lands 80×60, the same "native"
+  rule as the bitmap depths. `ov3_init` publishes the live grid in `cx_minfo`,
+  so `cx_gfx_info`, the canvas bounds, the save-under row size and the mouse
+  field all follow. Changing geometry while already in mode 3 reloads + reinits
+  the image (bank-side `cx_veng` poison past the same-image short-circuit); the
+  same geometry stays a no-op. The toolkit wants ≥ 64×25 — on narrower grids
+  apps draw their own cell UI. Fixed along the way: the `t_smode` wrapper let
+  `vera_addrsel` eat the mode code in `A`, so every geometry request became
+  80×30. New demo `TUIGEO` (menu/widgets/dialog, View menu switches the grid
+  live); new self-verifying boot smoke `GEOSMOKE` asserts all four toolkit
+  grids headlessly.
+- **Lists scroll with the mouse.** When a list's items overflow its box the
+  widget draws a **scroll strip** on the right edge (separator + up/down
+  arrows); a click in the strip's upper/lower half pages the selection a
+  screenful. The desktop's file list (23 visible rows, 30+ files now) was the
+  motivating case — the tail was keyboard-only before. Lists that fit draw
+  unchanged; the size column shifts left of the strip.
+- **Re-setting the menu/widgets no longer leaks regions.** New resident
+  `rg_remove` (remove by handler, anywhere in the 8-deep stack, compacting);
+  `cx_menu_set`, `cx_wg_set` and `cx_menu_off` use it, so an app repainting
+  bar + widgets per view switch (TUIGEO) no longer fills the stack and goes
+  unstable after a few switches. Repainting from an `EV_MENU` handler is a
+  supported pattern.
+- **The desktop defaults to icon view.** The resident view byte (`$800A`)
+  stores the mode inverted, so the cold-boot zero lands on icons; a chosen
+  view still sticks across app launches.
+- **Resident ledger:** `cx_eng_index` (+ the tile-depth default) moved behind
+  a `cxb_call` stub into bank 17; the v0.12.0 mode/bpp dispatch cost came back
+  and paid for `rg_remove` and the mode-3 mouse field (152 B free). `CX_KBUILD`
+  → `$0603`.
+- **x16lib v0.12.1 vendored** (table-free fast `bitmap4h`/`8h` — the row tables
+  outgrew the fixed 2304-byte overlay window, replaced upstream by an
+  arithmetic `y*320`/`y*640`; largest engine image 2004/2304) and the library
+  gained `screen_get_size` (the `SCREEN` cols/rows query, `EXTRA` section).
+
 ## v0.12.1 — fix a black screen on exit from a VERA_2 depth (2026-07-24)
 
 - **`cx_gfx_init` now restores the desktop from a VERA_2 depth.** Leaving a

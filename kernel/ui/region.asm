@@ -74,6 +74,61 @@ rg_pop
     rts
 
 ; ---------------------------------------------------------------------
+; rg_remove -- A/X = a handler: remove EVERY region wearing it, wherever
+; it sits in the stack, closing the gap. Pop-only-if-top is not enough
+; for re-setting: an app that repaints its bar + widgets on every view
+; switch interleaves the two regions, so each re-set leaked a slot and
+; the 8-deep stack filled after a few switches. menu_set and wg_set
+; remove their own region through here before pushing the fresh one.
+; ---------------------------------------------------------------------
+rg_remove
+    sta rg_t                    ; the handler to hunt
+    stx rg_t+1
+    ldx #0                      ; the slot under inspection
+@scan
+    cpx rg_n
+    bcs @done
+    txa                         ; slot X: offset X * 10
+    asl
+    asl
+    sta rg_t2
+    txa
+    clc
+    adc rg_t2
+    asl
+    tay
+    lda rg_tab+8,y
+    cmp rg_t
+    bne @next
+    lda rg_tab+9,y
+    cmp rg_t+1
+    bne @next
+    lda rg_n                    ; a match: slide the slots above it down
+    dec a                       ; one place. end offset = (n-1)*10
+    sta rg_t2
+    asl
+    asl
+    clc
+    adc rg_t2
+    asl
+    sta rg_t2
+@slide
+    cpy rg_t2
+    bcs @slid
+    lda rg_tab+10,y
+    sta rg_tab,y
+    iny
+    bra @slide
+@slid
+    dec rg_n
+    bra @scan                   ; slot X now holds the NEXT region: recheck
+@next
+    inx
+    bra @scan
+@done
+    rts
+
+; ---------------------------------------------------------------------
 ; rg_route -- an event record sits in X16_P0..P7 (type, detail, x.w,
 ; y.w). Walk the stack top-down; the first region containing the point
 ; wins: its handler comes back in rg_vec with carry clear. Carry set =
@@ -135,5 +190,6 @@ rg_route
 
 rg_n       .byte 0
 rg_t       .byte 0, 0
+rg_t2      .byte 0
 rg_vec     .word 0
 rg_tab     .res CX_RG_MAX * CX_RG_SIZE, 0
