@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mksd.py -- build a bootable Commander X16 FAT32 SD-card image.
 
-    python tools/mksd.py <out.img> <file> [<file> ...]
+    python tools/mksd.py <out.img> <file> [<file> ...] [--dir NAME <file> ...]
 
 Creates a ~48 MB image: an MBR with one FAT32-LBA partition at LBA 2048,
 a freshly formatted FAT32 volume, and each host file copied into the
@@ -9,7 +9,11 @@ root with its basename (uppercased, 8.3). The X16 boots it with
 `x16emu -sdcard <out.img>`, running AUTOBOOT.X16 the same way -fsroot
 does -- so the same build boots either way.
 
-FAT32 layout only; no long names, no subdirectories. Enough to carry a
+One level of SUBDIRECTORY is supported: everything after `--dir NAME`
+goes into a directory of that name (repeat the flag for more). The
+desktop shows it as a folder, so demos can live out of the root.
+
+FAT32 layout only; no long names, one directory level. Enough to carry a
 boot set (AUTOBOOT.X16, CXKERNEL.PRG, CXBANKS.BIN, PXL8.CXF, the CXAs).
 The on-disk structures follow the FAT32 spec; the MBR/BPB constants match
 what CMDR-DOS expects (partition at 2048, 0x0C type).
@@ -26,7 +30,7 @@ NFAT = 2
 IMG_SECTORS = 40 * 1024 * 1024 // SECTOR   # 40 MB (>65525 clusters at SPC=1)
 
 
-def build(out, files):
+def build(out, files, subdirs=None):
     part_sectors = IMG_SECTORS - PART_LBA
     # size the FAT so every data cluster has an entry. Iterate: a bigger
     # FAT leaves fewer data sectors, so solve for a consistent split.
@@ -109,7 +113,9 @@ def build(out, files):
     # The root directory takes as many clusters as its entries need --
     # one 512-byte cluster is only SIXTEEN files, and the seventeenth
     # used to spill into the first file's data and break the boot.
-    root_clusters = max(1, (len(files) * 32 + SPC * SECTOR - 1) // (SPC * SECTOR))
+    subdirs = subdirs or {}
+    root_entries = len(files) + len(subdirs)
+    root_clusters = max(1, (root_entries * 32 + SPC * SECTOR - 1) // (SPC * SECTOR))
     for i in range(root_clusters):
         fat[root_clus + i] = (root_clus + i + 1) if i + 1 < root_clusters else 0x0FFFFFFF
 
@@ -134,6 +140,47 @@ def build(out, files):
         ext = (ext[:3] + "   ")[:3]
         return (stem + ext).encode("ascii", "replace")
 
+    def wr(chain, data):
+        """write data into its cluster chain"""
+        for i, c in enumerate(chain):
+            off = base + (data_start - PART_LBA + (c - 2) * SPC) * SECTOR
+            chunk = data[i * SPC * SECTOR:(i + 1) * SPC * SECTOR]
+            img[off:off + len(chunk)] = chunk
+
+    def entry(name11, attr, first, size):
+        ent = bytearray(32)
+        ent[0:11] = name11
+        ent[11] = attr
+        struct.pack_into("<H", ent, 20, (first >> 16) & 0xFFFF)
+        struct.pack_into("<H", ent, 26, first & 0xFFFF)
+        struct.pack_into("<I", ent, 28, size)
+        return ent
+
+    def file_entries(hosts):
+        """copy each host file in and return its directory entries"""
+        out = bytearray()
+        for host in hosts:
+            with open(host, "rb") as fh:
+                data = fh.read()
+            chain = alloc_chain(len(data)) if data else []
+            wr(chain, data)
+            out += entry(name83(host), 0x20, chain[0] if chain else 0, len(data))
+        return out
+
+    # ---- subdirectories: their own cluster chains, "." and ".." first
+    subdir_entries = bytearray()
+    for dname, dfiles in subdirs.items():
+        body = bytearray()
+        dot_slot = len(body)                    # filled once the chain is known
+        body += bytearray(64)                   # room for "." and ".."
+        body += file_entries(dfiles)
+        chain = alloc_chain(max(len(body), 1))
+        body[0:32]  = entry(b".          ", 0x10, chain[0], 0)
+        body[32:64] = entry(b"..         ", 0x10, 0, 0)
+        wr(chain, bytes(body))
+        n11 = (dname.upper()[:8] + "        ")[:8] + "   "
+        subdir_entries += entry(n11.encode("ascii"), 0x10, chain[0], 0)
+
     for host in files:
         with open(host, "rb") as fh:
             data = fh.read()
@@ -146,11 +193,9 @@ def build(out, files):
         struct.pack_into("<H", ent, 26, first & 0xFFFF)
         struct.pack_into("<I", ent, 28, len(data))
         root += ent
-        # write the data into its clusters
-        for i, c in enumerate(chain):
-            off = base + (data_start - PART_LBA + (c - 2) * SPC) * SECTOR
-            chunk = data[i * SPC * SECTOR:(i + 1) * SPC * SECTOR]
-            img[off:off + len(chunk)] = chunk
+        wr(chain, data)
+
+    root += subdir_entries              # the folders, after the files
 
     # root directory into its clusters (contiguous from cluster 2)
     roff = base + (data_start - PART_LBA) * SECTOR
@@ -166,14 +211,31 @@ def build(out, files):
 
     with open(out, "wb") as f:
         f.write(img)
-    print("mksd: %s -- %d MB, %d clusters, %d file(s)"
-          % (out, IMG_SECTORS * SECTOR // (1024 * 1024), clusters, len(files)))
+    ndir = len(subdirs)
+    nsub = sum(len(v) for v in subdirs.values())
+    print("mksd: %s -- %d MB, %d clusters, %d file(s)%s"
+          % (out, IMG_SECTORS * SECTOR // (1024 * 1024), clusters, len(files),
+             (" + %d in %d folder(s)" % (nsub, ndir)) if ndir else ""))
 
 
 def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
-    build(sys.argv[1], sys.argv[2:])
+    out = sys.argv[1]
+    files = []
+    subdirs = {}
+    cur = files
+    args = sys.argv[2:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--dir":
+            name = args[i + 1]
+            cur = subdirs.setdefault(name, [])
+            i += 2
+            continue
+        cur.append(args[i])
+        i += 1
+    build(out, files, subdirs)
     return 0
 
 

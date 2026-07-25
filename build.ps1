@@ -496,10 +496,19 @@ function Build-Apps {
 }
 
 # --- stage everything a bootable disk needs -----------------------------
+# The ROOT carries the boot set and the SUITE -- the seven applications a
+# user actually reaches for. Everything else (demos, showcases, the
+# per-toolchain smokes) goes into DEMO\, which the desktop shows as a
+# folder, so the root list stays short. mksd.py mirrors the layout into
+# the FAT32 image with --dir.
 function Stage-SdRoot {
     $sdroot = Join-Path $build "sdroot"
     if (Test-Path $sdroot) { Remove-Item $sdroot -Recurse -Force }
     New-Item -ItemType Directory -Path $sdroot | Out-Null
+    $demo = Join-Path $sdroot "DEMO"
+    New-Item -ItemType Directory -Path $demo | Out-Null
+
+    # the boot set: stage-0 needs these in the root by name
     Copy-Item (Join-Path $build "AUTOBOOT.X16")  $sdroot
     Copy-Item (Join-Path $build "CXKERNEL.PRG")  $sdroot
     Copy-Item (Join-Path $build "CXBANKS.BIN")   $sdroot
@@ -507,78 +516,29 @@ function Stage-SdRoot {
     Copy-Item (Join-Path $root  "fonts\pxl8.cxf") (Join-Path $sdroot "PXL8.CXF")
     Copy-Item (Join-Path $root  "fonts\pxl6.cxf") (Join-Path $sdroot "PXL6.CXF")
     Copy-Item (Join-Path $build "SHELL.CXA")     $sdroot
-    Copy-Item (Join-Path $build "HELLO1.CXA")    $sdroot
-    Copy-Item (Join-Path $build "GALLERY.CXA")   $sdroot
-    Copy-Item (Join-Path $build "HITTEST.CXA")   $sdroot
-    Copy-Item (Join-Path $build "CPANEL.CXA")    $sdroot
-    Copy-Item (Join-Path $build "TUI.CXA")       $sdroot
-    Copy-Item (Join-Path $build "TUIGEO.CXA")    $sdroot
-    Copy-Item (Join-Path $build "M1UI.CXA")      $sdroot
-    Copy-Item (Join-Path $build "GAMELOOP.CXA")  $sdroot
-    if (Test-Path (Join-Path $build "HELLO2.CXA")) {
-        Copy-Item (Join-Path $build "HELLO2.CXA") $sdroot
+    Copy-Item (Join-Path $build "NOTES.CXD")     $sdroot   # the desk accessory
+
+    # the suite, in the root
+    foreach ($n in @("CALC8", "CHART", "CPANEL", "DATA", "PAINT", "SHEET", "WORD")) {
+        $f = Join-Path $build "$n.CXA"
+        if (Test-Path $f) { Copy-Item $f $sdroot }
     }
-    if (Test-Path (Join-Path $build "CALC.CXA")) {
-        Copy-Item (Join-Path $build "CALC.CXA") $sdroot
+
+    # everything else: demos, showcases and the per-toolchain smokes
+    foreach ($n in @("HELLO1", "HELLO2", "GALLERY", "HITTEST", "TUI", "TUIGEO",
+                     "M1UI", "GAMELOOP", "CALC", "UIDEMO", "CDEMO", "BEEP",
+                     "SPRITE", "GFX8", "GFX8HI", "GFX4", "GFX4HI", "GFX2",
+                     "TILES", "TILES8", "TILETEXT", "TILEDLG", "TEXT",
+                     "MENUTEST", "GEOSMOKE", "CALC8P", "SMOKE64", "SMOKEACME",
+                     "SMOKEDASM", "SMOKEMADS", "SMOKEVASM", "SMOKEKICK",
+                     "SMOKEC", "SMOKEO64", "SMOKEKICKC", "SMOKEVBCC",
+                     "SMOKEP8")) {
+        $f = Join-Path $build "$n.CXA"
+        if (Test-Path $f) { Copy-Item $f $demo }
     }
-    if (Test-Path (Join-Path $build "SHEET.CXA")) {
-        Copy-Item (Join-Path $build "SHEET.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "WORD.CXA")) {
-        Copy-Item (Join-Path $build "WORD.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "DATA.CXA")) {
-        Copy-Item (Join-Path $build "DATA.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "CHART.CXA")) {
-        Copy-Item (Join-Path $build "CHART.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "CALC8.CXA")) {   # the Prog8 calc, alongside the C one
-        Copy-Item (Join-Path $build "CALC8.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "UIDEMO.CXA")) {  # the p8sdk widget showcase
-        Copy-Item (Join-Path $build "UIDEMO.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "CDEMO.CXA")) {
-        Copy-Item (Join-Path $build "CDEMO.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "PAINT.CXA")) {
-        Copy-Item (Join-Path $build "PAINT.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "BEEP.CXA")) {
-        Copy-Item (Join-Path $build "BEEP.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "SPRITE.CXA")) {
-        Copy-Item (Join-Path $build "SPRITE.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "GFX8.CXA")) {
-        Copy-Item (Join-Path $build "GFX8.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "GFX8HI.CXA")) {    # the 640x480 8bpp VERA_2 demo
-        Copy-Item (Join-Path $build "GFX8HI.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "GFX4.CXA")) {      # the 320x240 4bpp demo
-        Copy-Item (Join-Path $build "GFX4.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "GFX2.CXA")) {      # the 320x240 2bpp demo
-        Copy-Item (Join-Path $build "GFX2.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "GFX4HI.CXA")) {    # the 640x480 4bpp VERA_2 demo
-        Copy-Item (Join-Path $build "GFX4HI.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "TILES.CXA")) {
-        Copy-Item (Join-Path $build "TILES.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "TILES8.CXA")) {    # the 8bpp tile + stream + flip demo
-        Copy-Item (Join-Path $build "TILES8.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "TILEDLG.CXA")) {   # the mode-2 panel-on-tiles demo
-        Copy-Item (Join-Path $build "TILEDLG.CXA") $sdroot
-    }
-    if (Test-Path (Join-Path $build "TEXT.CXA")) {
-        Copy-Item (Join-Path $build "TEXT.CXA") $sdroot
-    }
-    Copy-Item (Join-Path $build "NOTES.CXD")     $sdroot
+    # the sample table CXRF Chart opens, beside the demos
+    $sht = Join-Path $root "apps\chart\SALES.SHT"
+    if (Test-Path $sht) { Copy-Item $sht $demo }
     return $sdroot
 }
 
@@ -753,6 +713,11 @@ if ($Test) {
     Remove-Item (Join-Path $sdroot "AUTORUN.CXA") -Force -ErrorAction SilentlyContinue
     $img = Join-Path $build "cxrf_smoke.img"
     $files = Get-ChildItem $sdroot -File | ForEach-Object { $_.FullName }
+    $demoDir = Join-Path $sdroot "DEMO"
+    if (Test-Path $demoDir) {
+        $dfiles = Get-ChildItem $demoDir -File | ForEach-Object { $_.FullName }
+        if ($dfiles) { $files += @("--dir", "DEMO") + $dfiles }
+    }
     & python (Join-Path $root "tools\mksd.py") $img @files | Out-Null
     if ($LASTEXITCODE) { Fail "boot smoke: mksd.py failed to build the image" }
     $text = Invoke-Emulator @('-sdcard', $img) $TimeoutSec '(?m)^CXRF SHELL' "boot-sdcard"
@@ -804,6 +769,11 @@ if ($Apps -or $Image -or $Boot -or $Cart) {
         # real SD card (or -sdcard) boots identically to -fsroot.
         $img = Join-Path $build "cxrf_sd.img"
         $files = Get-ChildItem $sdroot -File | ForEach-Object { $_.FullName }
+    $demoDir = Join-Path $sdroot "DEMO"
+    if (Test-Path $demoDir) {
+        $dfiles = Get-ChildItem $demoDir -File | ForEach-Object { $_.FullName }
+        if ($dfiles) { $files += @("--dir", "DEMO") + $dfiles }
+    }
         & python (Join-Path $root "tools\mksd.py") $img @files
         if ($LASTEXITCODE) { throw "mksd.py failed" }
         Write-Host "image: $img"
