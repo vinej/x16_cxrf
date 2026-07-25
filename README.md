@@ -57,6 +57,12 @@ Full documentation lives in [docs/](docs/).
   - `CX_MODE_TILE` — two 64×32 VERA tile layers, hardware scrolling (`cx_tile_*`); bpp 8 or 4 per layer
   - `CX_MODE_TEXT` — KERNAL text cells "like BASIC": colour fills, PETSCII box frames, ruled lines, mixed-case `cx_say`. **Any KERNAL geometry** via `cx_gfx_mode(3, code)` — 80×60 (default), 80×30, 40×30, 64×25… — with `cx_gfx_info`, the bounds and the mouse following the live grid (the toolkit's menus/dialogs want ≥ 64×25)
 - Sprites, audio, events, joysticks, files, widgets and dialogs work in every mode.
+- **An office suite on the desktop** — five real applications that interchange files:
+  - [**CXRF Sheet**](apps/sheet/) — a spreadsheet: 100×26 cells, BCD decimal maths, formulas with `SUM`/`AVERAGE`/`MIN`/`MAX`/`ROUND`… over cell ranges (adapted from [X16Cell](https://github.com/TediusTimmy/X16Cell), BSD-3)
+  - [**CXRF Word**](apps/word/) — a text editor with a ~344 KB banked buffer, Nano-style keys ([X16 Edit](https://github.com/stefan-b-jakobsson/x16-edit), BSD-2, hosted by a 40-line wrapper)
+  - [**CXRF Data**](apps/data/) — a flat-file record manager: typed fields, sort, filter, find, totals, `.CXR` files, and export to Sheet
+  - [**CXRF Paint**](apps/paint/) — 320×240 in 256 colours: nine tools, live shape preview, palette picker, undo, BMX images
+  - [**CXRF Chart**](apps/chart/) — bars, line and pie from a Sheet (or exported Data) table, saved as a BMX picture
 - **Stock ROM (R49+)** — boots from SD via `AUTOBOOT.X16` or from a **cartridge** (`build.ps1 -Cart`, ROM banks 32–36). No ROM patches.
 - **Native CMDR-DOS FAT32 files** .
 - **Apps in any toolchain** — fixed jump-table ABI with generated bindings for 7 assemblers, 5 C compilers, and Prog8.

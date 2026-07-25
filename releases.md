@@ -4,6 +4,54 @@ CXRF (Commander X16 Runtime Framework) shipped as **CXGEOS** through v0.9.0 and
 was renamed at v0.10.0. Git tags keep their `vX.Y.Z` names; dates are tag dates.
 Newest release first.
 
+## v0.14.0 — the office suite (2026-07-25)
+
+Five real applications on the desktop, and they interchange files:
+**Data → Sheet → Chart → Paint**.
+
+- **CXRF Sheet** (`apps/sheet`) — a spreadsheet, adapted from Thomas
+  DiModica's [X16Cell](https://github.com/TediusTimmy/X16Cell) (BSD-3,
+  notices kept). The engine is upstream verbatim: 8-digit BCD decimal
+  floats, a shunting-yard parser (`SUM`/`AVERAGE`/`COUNT`/`MIN`/`MAX`/
+  `ROUND`/`TRUNC`/`ABS`, ranges, `A0`–`Z99` refs), a 100×26 banked cell
+  store. The platform layer is new: mode 3 at the full 80×60 painted by
+  **direct VERA text-map writes** (the KERNAL editor path was too slow
+  for 4,800-cell repaints and its wrap/scroll corrupted them), mixed-case
+  typing, an ESC that cancels an edit, labels that spill across empty
+  neighbours, mouse cell selection, and a CBM-channel `fopen` shim
+  (llvm-mos stdio overflowed the app ceiling by 771 bytes).
+- **CXRF Word** (`apps/word`) — Stefan Jakobsson's
+  [X16 Edit](https://github.com/stefan-b-jakobsson/x16-edit) (BSD-2)
+  vendored verbatim and hosted by a **~40-line wrapper**: enter mode 3,
+  hand the editor the app banks (20–63 = a ~344 KB text buffer), and on
+  Ctrl+X restore the desktop. Its IRQ chains to the kernel's, its zero
+  page is relinked to the app window, and the CXRF event system stays
+  out of the way so its own KERNAL keyboard/mouse handling runs clean.
+- **CXRF Data** (`apps/data`) — a native flat-file record manager: 96-byte
+  fixed records in app banks (1,200 max), six typed fields, a table grid,
+  add/edit/duplicate/delete, sort by any field, substring filter,
+  find-next, count/sum/average, `.CXR` files carrying their schema, and
+  **export to Sheet** in the keystroke-replay format so a table opens in
+  the spreadsheet natively.
+- **CXRF Paint** (`apps/paint`) — the old demo replaced by a real paint
+  program at 320×240 in 256 colours: nine tools (draw, line, rect, box,
+  circle, disc, erase, flood fill, text), **live rubber-band preview**
+  while dragging a shape, a 16×16 palette picker, one-level full-frame
+  undo in banks 20–29, and **BMX v1** save/load that interchanges with
+  cx16paint and the community viewers.
+- **CXRF Chart** (`apps/chart`) — bars, line and pie (`cx_pie` wedges)
+  from a **Sheet** file — so it charts a Sheet save *and* a Data table
+  through Data's export. Auto-scaled axis, colour legend, and **save
+  picture** as BMX, which lands the chart in Paint.
+- **Framework lessons, now documented in the sources:** `cx_ev_init`
+  RESETS the region stack (so `cx_menu_set` must follow it); a modal box
+  taller than the mode's save-under (≈102 rows in mode 0) runs into
+  **bank 16, the widget engine's own bank**, after which the toolkit
+  executes the pixels that overwrote it; `cx_prompt` refuses a capacity
+  of 0; and the kernel's dialogs size themselves from the *mode's*
+  metrics, which carry 640×480 numbers — so a 320-wide mode wants its own
+  in-canvas prompts (Paint and Chart both do this).
+
 ## v0.13.0 — text geometries, list scrolling, leak-free re-set (2026-07-24)
 
 - **`CX_MODE_TEXT` takes any KERNAL geometry.** `cx_gfx_mode(3, X)` with `X` =

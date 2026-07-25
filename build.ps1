@@ -286,7 +286,8 @@ function Build-Apps {
             @{ src = "apps\tiledlg\tiledlg.c";   prg = "TILEDLG";  name = "Tile dialog" },
             @{ src = "apps\text\text.c";     prg = "TEXT";   name = "Text mode" },
             @{ src = "apps\sheet\sheet.c";   prg = "SHEET";  name = "CXRF Sheet" },
-            @{ src = "apps\data\data.c";     prg = "DATA";   name = "CXRF Data" }
+            @{ src = "apps\data\data.c";     prg = "DATA";   name = "CXRF Data" },
+            @{ src = "apps\chart\chart.c";   prg = "CHART";  name = "CXRF Chart" }
         )) {
             $prg = Join-Path $build "$($capp.prg).PRG"
             Write-Host "llvm  $($capp.src) -> $prg"
@@ -529,6 +530,9 @@ function Stage-SdRoot {
     if (Test-Path (Join-Path $build "DATA.CXA")) {
         Copy-Item (Join-Path $build "DATA.CXA") $sdroot
     }
+    if (Test-Path (Join-Path $build "CHART.CXA")) {
+        Copy-Item (Join-Path $build "CHART.CXA") $sdroot
+    }
     if (Test-Path (Join-Path $build "CALC8.CXA")) {   # the Prog8 calc, alongside the C one
         Copy-Item (Join-Path $build "CALC8.CXA") $sdroot
     }
@@ -725,7 +729,8 @@ if ($Test) {
         @{ cxa = "SHEET.CXA";     mk = "SHEET UP" },
         @{ cxa = "WORD.CXA";      mk = "WORD UP" },
         @{ cxa = "PAINT.CXA";     mk = "PAINT UP" },
-        @{ cxa = "DATA.CXA";      mk = "DATA UP" }
+        @{ cxa = "DATA.CXA";      mk = "DATA UP" },
+        @{ cxa = "CHART.CXA";     mk = "CHART UP" }
     )) {
         if (Test-Path (Join-Path $build $sm.cxa)) {
             $hellos += @{ cxa = $sm.cxa; up = $sm.mk; wait = $sm.mk }

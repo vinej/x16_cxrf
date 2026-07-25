@@ -458,7 +458,13 @@ static unsigned char sheet_export(void) {
         cbm_k_chrout('\n');
         cbm_k_chrout('d');
     }
-    cbm_k_chrout('s');
+    cbm_k_chrout('s');                          /* down, then back to
+                                                 * column A -- 's' only
+                                                 * moves DOWN, so without
+                                                 * these the next row
+                                                 * started where this one
+                                                 * ended (a staircase) */
+    for (f = 0; f < DB_FIELDS; f++) cbm_k_chrout('a');
     for (v = 0; v < n_view && v < 99; v++) {
         for (f = 0; f < DB_FIELDS; f++) {
             char *s = rec_field(order[v], f);
@@ -470,6 +476,7 @@ static unsigned char sheet_export(void) {
             cbm_k_chrout('d');
         }
         cbm_k_chrout('s');
+        for (f = 0; f < DB_FIELDS; f++) cbm_k_chrout('a');
     }
     cbm_k_chrout('z');
     cbm_k_clrch();
