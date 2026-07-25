@@ -231,6 +231,21 @@ function Build-Apps {
     $da = Build-Prg "apps\da_notes\notes.asm" "NOTES" "da.cfg"
     Copy-Item $da (Join-Path $build "NOTES.CXD") -Force
 
+    # CXRF Word: X16 Edit (vendored) + the CXRF host wrapper. Two ca65
+    # objects and its own cfg (the ZP rides the app window, the ceiling
+    # is $8000); the lzsa help binaries ship pre-compressed beside the
+    # sources, so no lzsa tool is needed to build.
+    $wordDir = Join-Path $root "apps\word"
+    Write-Host "ca65  apps\word\word.asm + main.asm -> build\WORD.PRG"
+    & $ca65 --cpu 65C02 -D target_mem=1 -I $wordDir --bin-include-dir $wordDir -o (Join-Path $build "word_main.o") (Join-Path $wordDir "main.asm")
+    if ($LASTEXITCODE -ne 0) { Fail "ca65 failed on word\main.asm" }
+    & $ca65 --cpu 65C02 -I $root -o (Join-Path $build "word_stub.o") (Join-Path $wordDir "word.asm")
+    if ($LASTEXITCODE -ne 0) { Fail "ca65 failed on word\word.asm" }
+    & $ld65 -C (Join-Path $wordDir "word.cfg") -o (Join-Path $build "WORD.PRG") (Join-Path $build "word_stub.o") (Join-Path $build "word_main.o")
+    if ($LASTEXITCODE -ne 0) { Fail "ld65 failed on WORD" }
+    & $py $mkcxap (Join-Path $build "WORD.PRG") (Join-Path $build "WORD.CXA") --name "CXRF Word"
+    if ($LASTEXITCODE -ne 0) { Fail "mkcxap failed on WORD" }
+
     # hello_c wants llvm-mos; a machine without it still builds the rest
     $mosbin = $null
     $candidates = @()
@@ -507,6 +522,9 @@ function Stage-SdRoot {
     if (Test-Path (Join-Path $build "SHEET.CXA")) {
         Copy-Item (Join-Path $build "SHEET.CXA") $sdroot
     }
+    if (Test-Path (Join-Path $build "WORD.CXA")) {
+        Copy-Item (Join-Path $build "WORD.CXA") $sdroot
+    }
     if (Test-Path (Join-Path $build "CALC8.CXA")) {   # the Prog8 calc, alongside the C one
         Copy-Item (Join-Path $build "CALC8.CXA") $sdroot
     }
@@ -700,7 +718,8 @@ if ($Test) {
         @{ cxa = "GFX2.CXA";      mk = "GFX2 OK" },
         @{ cxa = "GFX4HI.CXA";    mk = "GFX4HI OK" },
         @{ cxa = "GEOSMOKE.CXA";  mk = "GEOSMOKE OK" },
-        @{ cxa = "SHEET.CXA";     mk = "SHEET UP" }
+        @{ cxa = "SHEET.CXA";     mk = "SHEET UP" },
+        @{ cxa = "WORD.CXA";      mk = "WORD UP" }
     )) {
         if (Test-Path (Join-Path $build $sm.cxa)) {
             $hellos += @{ cxa = $sm.cxa; up = $sm.mk; wait = $sm.mk }

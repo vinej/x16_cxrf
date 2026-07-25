@@ -1,0 +1,18 @@
+G/F1=Help    S=Replace
+X/F2=Exit    L=Goto line
+O/F3=Write   A=Auto indent
+J/F4=Justify Z=Word wrap
+R/F5=Open    E=Charset
+W/F6=Search  I=DOS cmd
+Y/F7=PgUp    D=Set device
+V/F8=PgDn    T=Text color
+F   =Toolbox Q=Quote mode
+N   =New     B=Backgr color
+K   =Cut     M=Mem free
+DEL =Del Ln  C=Copy
+1..9=Tab w   U=Uncut/paste
+RET =Ln brk  ;=ScnCode Hndlr
+             H=Hard copy
+
+(c) Stefan Jakobsson 2020-26.
+BSD 2-Clause License.
