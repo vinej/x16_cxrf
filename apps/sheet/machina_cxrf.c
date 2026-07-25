@@ -114,6 +114,9 @@ void platformInitializeScreen (void)
  {
    cx_mode(CX_MODE_TEXT, 0U);     /* the 80x60 default geometry */
    cx_clear(6U);
+   cx_mouse_show(1U);             /* the pointer rides the text grid --
+                                   * the kernel sizes its field to the
+                                   * live mode-3 geometry */
    m_x = 0U;
    m_y = 0U;
    m_blen = 0U;
@@ -186,6 +189,13 @@ static byte m_curattr (byte restore, byte value)
    return a;
  }
 
+/* CXRF mouse support: a click comes back from platformGetch as the
+ * pseudo-command CXRF_CMD_CLICK with the clicked SCREEN CELL here --
+ * ui.c owns the scroll state and column widths, so the mapping to a
+ * sheet cell happens there. */
+#define CXRF_CMD_CLICK 0xFEU
+byte mouse_cx, mouse_cy;
+
 byte platformGetch (void)
  {
    cx_event ev;
@@ -204,6 +214,14 @@ byte platformGetch (void)
          if (CX_ET_KEY == ev.type)
           {
             key = ev.detail;
+            break;
+          }
+         if (CX_ET_DOWN == ev.type)
+          {
+            mouse_cx = (byte)ev.x;    /* the kernel already shifts mode-3
+                                       * mouse coords to CELLS (cx_cshift) */
+            mouse_cy = (byte)ev.y;
+            key = CXRF_CMD_CLICK;
             break;
           }
        }

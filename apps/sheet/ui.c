@@ -676,6 +676,30 @@ byte interpretCommand (byte command)
           }
        }
       break;
+   case CXRF_CMD_CLICK: // CXRF: the mouse -- select the clicked cell
+      if (mouse_cy >= 3U)
+       {
+         byte cr = tr_row + (mouse_cy - 3U);
+         byte cq = 2U;
+         if (cr < NUM_ROWS)
+          {
+            for (c = tr_col; c < NUM_COLS; ++c)
+             {
+               t = widths[c];
+               if (cq + t > x) break;     /* the black border: ignore */
+               if ((mouse_cx >= cq) && (mouse_cx < (byte)(cq + t)))
+                {
+                  l_row = c_row;
+                  l_col = c_col;
+                  c_row = cr;
+                  c_col = c;
+                  break;
+                }
+               cq += t;
+             }
+          }
+       }
+      break;
    case ']':
       if (widths[c_col] != 30)
        {
