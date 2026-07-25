@@ -719,7 +719,8 @@ if ($Test) {
         @{ cxa = "GFX4HI.CXA";    mk = "GFX4HI OK" },
         @{ cxa = "GEOSMOKE.CXA";  mk = "GEOSMOKE OK" },
         @{ cxa = "SHEET.CXA";     mk = "SHEET UP" },
-        @{ cxa = "WORD.CXA";      mk = "WORD UP" }
+        @{ cxa = "WORD.CXA";      mk = "WORD UP" },
+        @{ cxa = "PAINT.CXA";     mk = "PAINT UP" }
     )) {
         if (Test-Path (Join-Path $build $sm.cxa)) {
             $hellos += @{ cxa = $sm.cxa; up = $sm.mk; wait = $sm.mk }
