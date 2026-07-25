@@ -269,7 +269,8 @@ function Build-Apps {
             @{ src = "apps\tiles8\tiles8.c"; prg = "TILES8"; name = "8bpp tiles" },
             @{ src = "apps\tiletext\tiletext.c"; prg = "TILETEXT"; name = "Tile text" },
             @{ src = "apps\tiledlg\tiledlg.c";   prg = "TILEDLG";  name = "Tile dialog" },
-            @{ src = "apps\text\text.c";     prg = "TEXT";   name = "Text mode" }
+            @{ src = "apps\text\text.c";     prg = "TEXT";   name = "Text mode" },
+            @{ src = "apps\sheet\sheet.c";   prg = "SHEET";  name = "CXRF Sheet" }
         )) {
             $prg = Join-Path $build "$($capp.prg).PRG"
             Write-Host "llvm  $($capp.src) -> $prg"
@@ -503,6 +504,9 @@ function Stage-SdRoot {
     if (Test-Path (Join-Path $build "CALC.CXA")) {
         Copy-Item (Join-Path $build "CALC.CXA") $sdroot
     }
+    if (Test-Path (Join-Path $build "SHEET.CXA")) {
+        Copy-Item (Join-Path $build "SHEET.CXA") $sdroot
+    }
     if (Test-Path (Join-Path $build "CALC8.CXA")) {   # the Prog8 calc, alongside the C one
         Copy-Item (Join-Path $build "CALC8.CXA") $sdroot
     }
@@ -695,7 +699,8 @@ if ($Test) {
         @{ cxa = "GFX4.CXA";      mk = "GFX4 OK" },
         @{ cxa = "GFX2.CXA";      mk = "GFX2 OK" },
         @{ cxa = "GFX4HI.CXA";    mk = "GFX4HI OK" },
-        @{ cxa = "GEOSMOKE.CXA";  mk = "GEOSMOKE OK" }
+        @{ cxa = "GEOSMOKE.CXA";  mk = "GEOSMOKE OK" },
+        @{ cxa = "SHEET.CXA";     mk = "SHEET UP" }
     )) {
         if (Test-Path (Join-Path $build $sm.cxa)) {
             $hellos += @{ cxa = $sm.cxa; up = $sm.mk; wait = $sm.mk }
